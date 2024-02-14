@@ -53,6 +53,12 @@ variable "ebs_delete_on_termination" {
   default     = true
 }
 
+variable "iam_instance_profile" {
+  description = "IAM instnace profile for the ec2 instance"
+  type        = string
+  default     = ""
+}
+
 variable "global_tags" {
   description = "Tags to apply to everything"
   type        = map(string)
@@ -73,6 +79,12 @@ variable "snapshot_tags" {
 
 variable "custom_shell_commands" {
   description = "Additional commands to run on the EC2 instance, to customize the instance, like installing packages"
+  type        = list(string)
+  default     = []
+}
+
+variable "custom_shell_commands_post_runner_install" {
+  description = "Additional commands to run on the EC2 instance, to customize the instance, like installing packages. This runs after the agent is installed."
   type        = list(string)
   default     = []
 }
@@ -98,6 +110,7 @@ locals {
 source "amazon-ebs" "githubrunner" {
   ami_name                                  = "github-runner-al2023-x86_64-${formatdate("YYYYMMDDhhmm", timestamp())}"
   instance_type                             = var.instance_type
+  iam_instance_profile                      = var.iam_instance_profile
   region                                    = var.region
   security_group_id                         = var.security_group_id
   subnet_id                                 = var.subnet_id
@@ -188,6 +201,11 @@ build {
       "sudo mv /tmp/start-runner.sh /var/lib/cloud/scripts/per-boot/start-runner.sh",
       "sudo chmod +x /var/lib/cloud/scripts/per-boot/start-runner.sh",
     ]
+  }
+
+  provisioner "shell" {
+    environment_vars = []
+    inline           = concat(var.custom_shell_commands_post_runner_install)
   }
 
   post-processor "manifest" {
